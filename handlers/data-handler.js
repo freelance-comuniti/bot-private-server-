@@ -1,4 +1,4 @@
-const { Data, User } = require('../database/models');
+const db = require('../database/db');
 const zipGenerator = require('../utils/zip-generator');
 const moment = require('moment');
 
@@ -7,7 +7,10 @@ class DataHandler {
   // View personal data
   async viewPersonalData(chatId) {
     try {
-      const userData = await Data.findByUserId(chatId.toString(), 10);
+      const userData = await db.query(
+        'SELECT * FROM data WHERE user_id = ? ORDER BY timestamp DESC LIMIT 10',
+        [chatId.toString()]
+      );
 
       if (userData.length === 0) {
         global.bot.sendMessage(chatId,
@@ -27,7 +30,13 @@ class DataHandler {
         dataText += `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
       });
 
-      dataText += `📊 Total data Anda: ${userData.length}\n`;
+      // Get total data count
+      const [totalData] = await db.query(
+        'SELECT COUNT(*) as count FROM data WHERE user_id = ?',
+        [chatId.toString()]
+      );
+
+      dataText += `📊 Total data Anda: ${totalData[0].count}\n`;
       dataText += `🔧 *Bot by RizzXploit • JCN Community*`;
 
       global.bot.sendMessage(chatId, dataText, { parse_mode: 'Markdown' });
@@ -45,8 +54,12 @@ class DataHandler {
   async viewPremiumData(chatId) {
     try {
       // Cek apakah user premium
-      const user = await User.findOne({ user_id: chatId.toString() });
-      if (!user || user.role !== 'premium') {
+      const [users] = await db.query(
+        'SELECT * FROM users WHERE user_id = ?',
+        [chatId.toString()]
+      );
+      
+      if (users.length === 0 || users[0].role !== 'premium') {
         global.bot.sendMessage(chatId,
           `❌ Akses ditolak! Hanya user premium yang bisa mengakses fitur ini.\n\n🔧 *Bot by RizzXploit • JCN Community*`,
           { parse_mode: 'Markdown' }
@@ -92,12 +105,12 @@ class DataHandler {
   // Delete data
   async deleteData(chatId, dataId) {
     try {
-      const result = await Data.deleteOne({ 
-        file_id: dataId,
-        user_id: chatId.toString() 
-      });
+      const result = await db.query(
+        'DELETE FROM data WHERE file_id = ? AND user_id = ?',
+        [dataId, chatId.toString()]
+      );
 
-      if (!result) {
+      if (result.affectedRows === 0) {
         global.bot.sendMessage(chatId,
           `❌ Data tidak ditemukan atau tidak bisa dihapus.\n\n🔧 *Bot by RizzXploit • JCN Community*`,
           { parse_mode: 'Markdown' }
@@ -106,9 +119,10 @@ class DataHandler {
       }
 
       // Update user stats
-      await User.update(chatId.toString(), { 
-        data_collected: await Data.count({ user_id: chatId.toString() })
-      });
+      await db.query(
+        'UPDATE users SET data_collected = data_collected - 1 WHERE user_id = ?',
+        [chatId.toString()]
+      );
 
       global.bot.sendMessage(chatId,
         `✅ Data berhasil dihapus!\n\n🔧 *Bot by RizzXploit • JCN Community*`,
@@ -127,16 +141,27 @@ class DataHandler {
   // Show user stats
   async showUserStats(chatId) {
     try {
-      const user = await User.findOne({ user_id: chatId.toString() });
-      const dataCount = await Data.count({ user_id: chatId.toString() });
+      const [users] = await db.query(
+        'SELECT * FROM users WHERE user_id = ?',
+        [chatId.toString()]
+      );
 
-      if (!user) {
+      if (users.length === 0) {
         global.bot.sendMessage(chatId,
           `❌ User tidak ditemukan.\n\n🔧 *Bot by RizzXploit • JCN Community*`,
           { parse_mode: 'Markdown' }
         );
         return;
       }
+
+      const user = users[0];
+      
+      const [dataCountResult] = await db.query(
+        'SELECT COUNT(*) as count FROM data WHERE user_id = ?',
+        [chatId.toString()]
+      );
+
+      const dataCount = dataCountResult[0].count;
 
       const statsText = `📈 **STATISTIK ANDA**\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
         `👤 Role: ${user.role === 'premium' ? '👑 Premium' : '👤 Member'}\n` +
@@ -162,23 +187,27 @@ class DataHandler {
     try {
       const fileId = `photo_${clientInfo.ip}_${Date.now()}`;
       
-      await Data.create({
-        file_id: fileId,
-        user_id: userId,
-        image_url: imageData,
-        ip_address: clientInfo.ip,
-        user_agent: clientInfo.userAgent,
-        device_type: clientInfo.deviceType,
-        country: clientInfo.country,
-        referrer: clientInfo.referrer
-      });
+      await db.query(
+        `INSERT INTO data (file_id, user_id, image_url, ip_address, user_agent, device_type, country, referrer) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          fileId, 
+          userId, 
+          imageData,
+          clientInfo.ip,
+          clientInfo.userAgent,
+          clientInfo.deviceType,
+          clientInfo.country || 'Unknown',
+          clientInfo.referrer || 'Direct'
+        ]
+      );
 
       // Update user stats
-      const dataCount = await Data.count({ user_id: userId });
-      await User.update(userId, { 
-        data_collected: dataCount,
-        last_active: new Date()
-      });
+      await db.query(
+        `UPDATE users SET data_collected = data_collected + 1, last_active = NOW() 
+         WHERE user_id = ?`,
+        [userId]
+      );
 
       return { success: true, fileId };
 
