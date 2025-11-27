@@ -1,4 +1,4 @@
-const { Link, User } = require('../database/models');
+const db = require('../database/db');
 const crypto = require('crypto');
 
 class LinkHandler {
@@ -6,8 +6,12 @@ class LinkHandler {
   // Generate shareable link
   async generateShareLink(chatId, linkType = 'member') {
     try {
-      const user = await User.findOne({ user_id: chatId.toString() });
-      if (!user) {
+      const [users] = await db.query(
+        'SELECT * FROM users WHERE user_id = ?',
+        [chatId.toString()]
+      );
+      
+      if (users.length === 0) {
         global.bot.sendMessage(chatId,
           `❌ User tidak ditemukan.\n\n🔧 *Bot by RizzXploit • JCN Community*`,
           { parse_mode: 'Markdown' }
@@ -22,16 +26,17 @@ class LinkHandler {
       const shareableLink = `${websiteUrl}/?ref=${chatId}&code=${linkCode}&type=${linkType}`;
 
       // Save to database
-      await Link.create({
-        link_code: linkCode,
-        user_id: chatId.toString(),
-        link_type: linkType,
-        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
-      });
+      await db.query(
+        `INSERT INTO links (link_code, user_id, link_type, expires_at) 
+         VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 30 DAY))`,
+        [linkCode, chatId.toString(), linkType]
+      );
 
       // Update user stats
-      const linksCount = await Link.count({ user_id: chatId.toString() });
-      await User.update(chatId.toString(), { links_shared: linksCount });
+      await db.query(
+        'UPDATE users SET links_shared = links_shared + 1 WHERE user_id = ?',
+        [chatId.toString()]
+      );
 
       const linkText = linkType === 'premium' ? 
         `💎 **LINK VVIP BERHASIL DIBUAT**\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n` :
@@ -68,22 +73,30 @@ class LinkHandler {
   // Validate link when accessed from website
   async validateLink(linkCode, referringUserId) {
     try {
-      const link = await Link.findOne({ 
-        link_code: linkCode,
-        is_active: true
-      });
+      const [links] = await db.query(
+        'SELECT * FROM links WHERE link_code = ? AND is_active = TRUE',
+        [linkCode]
+      );
 
-      if (!link) {
+      if (links.length === 0) {
         return { valid: false, error: 'Link tidak valid atau sudah expired' };
       }
 
-      if (link.expires_at && new Date() > link.expires_at) {
-        await Link.update(linkCode, { is_active: false });
+      const link = links[0];
+
+      if (link.expires_at && new Date() > new Date(link.expires_at)) {
+        await db.query(
+          'UPDATE links SET is_active = FALSE WHERE link_code = ?',
+          [linkCode]
+        );
         return { valid: false, error: 'Link sudah expired' };
       }
 
       // Update link stats
-      await Link.update(linkCode, { click_count: link.click_count + 1 });
+      await db.query(
+        'UPDATE links SET click_count = click_count + 1 WHERE link_code = ?',
+        [linkCode]
+      );
 
       return { 
         valid: true, 
@@ -101,10 +114,10 @@ class LinkHandler {
   // Update link data count
   async updateLinkDataCount(linkCode) {
     try {
-      const link = await Link.findOne({ link_code: linkCode });
-      if (link) {
-        await Link.update(linkCode, { data_collected: link.data_collected + 1 });
-      }
+      await db.query(
+        'UPDATE links SET data_collected = data_collected + 1 WHERE link_code = ?',
+        [linkCode]
+      );
       return true;
     } catch (error) {
       console.error('Error updating link count:', error);
