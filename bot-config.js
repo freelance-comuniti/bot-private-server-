@@ -34,5 +34,6 @@ bot.on('error', (error) => {
 });
 
 console.log('✅ Bot configured in WEBHOOK mode');
+console.log('💾 Database: MySQL');
 
 module.exports = bot;
