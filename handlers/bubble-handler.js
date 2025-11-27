@@ -4,9 +4,39 @@ const linkHandler = require('./link-handler');
 
 class BubbleHandler {
   
-  // [KEEP ALL PREVIOUS METHODS...]
+  // Show main menu dengan bubble buttons
+  showMainMenu(msg) {
+    const chatId = msg.chat.id;
+    const userName = msg.from.first_name;
+    
+    const menuText = `🤖 **FREELANCE BOT PANEL**\n━━━━━━━━━━━━━━━━━━━━━━━━━━\nHalo ${userName}! 👋\nSelamat datang di panel admin.\n\n🔧 *Bot by RizzXploit • JCN Community*`;
+    
+    const menuOptions = {
+      reply_markup: {
+        keyboard: [
+          [
+            { text: "👥 USER MANAGEMENT" },
+            { text: "📊 DATA MANAGEMENT" }
+          ],
+          [
+            { text: "🔗 LINK SHARING" },
+            { text: "🛠️ UTILITIES" }
+          ],
+          [
+            { text: "📈 MY STATS" },
+            { text: "ℹ️ HELP" }
+          ]
+        ],
+        resize_keyboard: true,
+        one_time_keyboard: false
+      },
+      parse_mode: 'Markdown'
+    };
+    
+    global.bot.sendMessage(chatId, menuText, menuOptions);
+  }
 
-  // UPDATE: Handle text messages dengan semua fitur
+  // Handle text messages dari user
   async handleTextMessage(msg) {
     const chatId = msg.chat.id;
     const text = msg.text;
@@ -120,6 +150,149 @@ class BubbleHandler {
           this.showMainMenu(msg);
         }
     }
+  }
+
+  // Handle callback queries (untuk inline buttons nanti)
+  handleCallbackQuery(query) {
+    const chatId = query.message.chat.id;
+    const data = query.data;
+    
+    console.log(`🔘 Callback query: ${data} from ${chatId}`);
+    
+    global.bot.answerCallbackQuery(query.id, {
+      text: "Fitur dalam pengembangan..."
+    });
+  }
+
+  // USER MANAGEMENT MENU
+  showUserManagementMenu(chatId) {
+    const menuText = `👥 **USER MANAGEMENT**\n━━━━━━━━━━━━━━━━━━━━━━━━━━\nKelola pengguna dan akses premium.\n\n🔧 *Bot by RizzXploit • JCN Community*`;
+    
+    const menuOptions = {
+      reply_markup: {
+        keyboard: [
+          [
+            { text: "➕ ADD PREM" },
+            { text: "➕ ADD USER" }
+          ],
+          [
+            { text: "📋 LIST USER" },
+            { text: "👑 PREMIUM LIST" }
+          ],
+          [
+            { text: "🔙 BACK TO MAIN" }
+          ]
+        ],
+        resize_keyboard: true
+      },
+      parse_mode: 'Markdown'
+    };
+    
+    global.bot.sendMessage(chatId, menuText, menuOptions);
+  }
+
+  // DATA MANAGEMENT MENU
+  showDataManagementMenu(chatId) {
+    const menuText = `📊 **DATA MANAGEMENT**\n━━━━━━━━━━━━━━━━━━━━━━━━━━\nKelola data dan laporan yang terkumpul.\n\n🔧 *Bot by RizzXploit • JCN Community*`;
+    
+    const menuOptions = {
+      reply_markup: {
+        keyboard: [
+          [
+            { text: "👀 VIEW DATA" },
+            { text: "💎 VIEW PREMIUM" }
+          ],
+          [
+            { text: "🗑️ DELETE DATA" },
+            { text: "📈 MY STATS" }
+          ],
+          [
+            { text: "🔙 BACK TO MAIN" }
+          ]
+        ],
+        resize_keyboard: true
+      },
+      parse_mode: 'Markdown'
+    };
+    
+    global.bot.sendMessage(chatId, menuText, menuOptions);
+  }
+
+  // LINK SHARING MENU
+  showLinkSharingMenu(chatId) {
+    const menuText = `🔗 **LINK SHARING**\n━━━━━━━━━━━━━━━━━━━━━━━━━━\nBagikan link untuk mengumpulkan data.\n\n🔧 *Bot by RizzXploit • JCN Community*`;
+    
+    const menuOptions = {
+      reply_markup: {
+        keyboard: [
+          [
+            { text: "🌐 BAGIKAN LINK" },
+            { text: "💎 LINK VVIP" }
+          ],
+          [
+            { text: "📨 UNDANG USER" },
+            { text: "🔄 REFRESH" }
+          ],
+          [
+            { text: "🔙 BACK TO MAIN" }
+          ]
+        ],
+        resize_keyboard: true
+      },
+      parse_mode: 'Markdown'
+    };
+    
+    global.bot.sendMessage(chatId, menuText, menuOptions);
+  }
+
+  // UTILITIES MENU
+  showUtilitiesMenu(chatId) {
+    const menuText = `🛠️ **UTILITIES**\n━━━━━━━━━━━━━━━━━━━━━━━━━━\nFitur tambahan dan pengaturan.\n\n🔧 *Bot by RizzXploit • JCN Community*`;
+    
+    const menuOptions = {
+      reply_markup: {
+        keyboard: [
+          [
+            { text: "ℹ️ HELP" },
+            { text: "⚙️ SETTINGS" }
+          ],
+          [
+            { text: "📞 SUPPORT" },
+            { text: "🔐 LOGOUT" }
+          ],
+          [
+            { text: "🔙 BACK TO MAIN" }
+          ]
+        ],
+        resize_keyboard: true
+      },
+      parse_mode: 'Markdown'
+    };
+    
+    global.bot.sendMessage(chatId, menuText, menuOptions);
+  }
+
+  // HELP MENU
+  showHelpMenu(chatId) {
+    const helpText = `ℹ️ **BOT HELP & GUIDE**\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `👥 **USER MANAGEMENT**\n` +
+      `• Add Prem - Tambah user premium\n` +
+      `• Add User - Tambah user member\n` +
+      `• List User - Lihat semua user\n\n` +
+      
+      `📊 **DATA MANAGEMENT**\n` +
+      `• View Data - Lihat data pribadi\n` +
+      `• View Premium - Download full report\n` +
+      `• Delete Data - Hapus data tertentu\n\n` +
+      
+      `🔗 **LINK SHARING**\n` +
+      `• Bagikan Link - Link member\n` +
+      `• Link VVIP - Link premium\n` +
+      `• Undang User - Invite system\n\n` +
+      
+      `🔧 *Bot by RizzXploit • JCN Community*`;
+    
+    global.bot.sendMessage(chatId, helpText, { parse_mode: 'Markdown' });
   }
 
   // NEW: Track user input state
