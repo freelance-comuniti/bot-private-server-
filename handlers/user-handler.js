@@ -10,8 +10,7 @@ class UserHandler {
       
       if (user) {
         // Update ke premium
-        user.role = 'premium';
-        await user.save();
+        await User.update(targetUserId, { role: 'premium' });
         
         global.bot.sendMessage(chatId, 
           `✅ User \`${targetUserId}\` berhasil diupgrade ke Premium!\n\n🔧 *Bot by RizzXploit • JCN Community*`,
@@ -19,13 +18,12 @@ class UserHandler {
         );
       } else {
         // Buat user baru premium
-        user = new User({
+        await User.create({
           user_id: targetUserId,
           first_name: 'Premium User',
           role: 'premium',
           invited_by: chatId.toString()
         });
-        await user.save();
         
         global.bot.sendMessage(chatId,
           `✅ User premium \`${targetUserId}\` berhasil ditambahkan!\n\n🔧 *Bot by RizzXploit • JCN Community*`,
@@ -56,7 +54,7 @@ class UserHandler {
   async addRegularUser(chatId, targetUserId) {
     try {
       // Cek apakah user sudah ada
-      let user = await User.findOne({ user_id: targetUserId });
+      const user = await User.findOne({ user_id: targetUserId });
       
       if (user) {
         global.bot.sendMessage(chatId,
@@ -67,13 +65,12 @@ class UserHandler {
       }
       
       // Buat user baru member
-      user = new User({
+      await User.create({
         user_id: targetUserId,
         first_name: 'Member User',
         role: 'member',
         invited_by: chatId.toString()
       });
-      await user.save();
       
       global.bot.sendMessage(chatId,
         `✅ User member \`${targetUserId}\` berhasil ditambahkan!\n\n🔧 *Bot by RizzXploit • JCN Community*`,
@@ -92,7 +89,7 @@ class UserHandler {
   // List all users
   async listAllUsers(chatId) {
     try {
-      const users = await User.find({ is_active: true }).sort({ role: -1, join_date: -1 });
+      const users = await User.findAll({ is_active: true });
       
       if (users.length === 0) {
         global.bot.sendMessage(chatId,
@@ -126,10 +123,10 @@ class UserHandler {
   // List premium users only
   async listPremiumUsers(chatId) {
     try {
-      const premiumUsers = await User.find({ 
+      const premiumUsers = await User.findAll({ 
         role: 'premium', 
         is_active: true 
-      }).sort({ join_date: -1 });
+      });
       
       if (premiumUsers.length === 0) {
         global.bot.sendMessage(chatId,
@@ -142,7 +139,7 @@ class UserHandler {
       let premiumList = `👑 **PREMIUM USERS** (${premiumUsers.length})\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
       
       premiumUsers.forEach((user, index) => {
-        premiumList += `${index + 1}. \`${user.user_id}\` - Bergabung: ${user.join_date.toLocaleDateString('id-ID')}\n`;
+        premiumList += `${index + 1}. \`${user.user_id}\` - Bergabung: ${new Date(user.join_date).toLocaleDateString('id-ID')}\n`;
       });
       
       premiumList += `\n🔧 *Bot by RizzXploit • JCN Community*`;
