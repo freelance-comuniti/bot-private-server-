@@ -11,7 +11,7 @@
   "dependencies": {
     "express": "^4.18.2",
     "node-telegram-bot-api": "^0.64.0",
-    "mongoose": "^7.5.0",
+    "mysql2": "^3.6.0",
     "archiver": "^5.3.1",
     "csv-writer": "^1.6.0",
     "moment": "^2.29.4",
@@ -22,7 +22,7 @@
   "devDependencies": {
     "nodemon": "^3.0.1"
   },
-  "keywords": ["telegram", "bot", "freelance", "jcn"],
+  "keywords": ["telegram", "bot", "freelance", "jcn", "mysql"],
   "author": "RizzXploit",
   "license": "MIT"
 }
