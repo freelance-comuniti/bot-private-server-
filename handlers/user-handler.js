@@ -1,4 +1,4 @@
-const { User } = require('../database/models');
+const db = require('../database/db');
 
 class UserHandler {
   
@@ -6,11 +6,17 @@ class UserHandler {
   async addPremiumUser(chatId, targetUserId) {
     try {
       // Cek apakah user sudah ada
-      let user = await User.findOne({ user_id: targetUserId });
+      const [existingUsers] = await db.query(
+        'SELECT * FROM users WHERE user_id = ?', 
+        [targetUserId]
+      );
       
-      if (user) {
+      if (existingUsers.length > 0) {
         // Update ke premium
-        await User.update(targetUserId, { role: 'premium' });
+        await db.query(
+          'UPDATE users SET role = ? WHERE user_id = ?',
+          ['premium', targetUserId]
+        );
         
         global.bot.sendMessage(chatId, 
           `✅ User \`${targetUserId}\` berhasil diupgrade ke Premium!\n\n🔧 *Bot by RizzXploit • JCN Community*`,
@@ -18,12 +24,11 @@ class UserHandler {
         );
       } else {
         // Buat user baru premium
-        await User.create({
-          user_id: targetUserId,
-          first_name: 'Premium User',
-          role: 'premium',
-          invited_by: chatId.toString()
-        });
+        await db.query(
+          `INSERT INTO users (user_id, first_name, role, invited_by) 
+           VALUES (?, ?, ?, ?)`,
+          [targetUserId, 'Premium User', 'premium', chatId.toString()]
+        );
         
         global.bot.sendMessage(chatId,
           `✅ User premium \`${targetUserId}\` berhasil ditambahkan!\n\n🔧 *Bot by RizzXploit • JCN Community*`,
@@ -31,7 +36,7 @@ class UserHandler {
         );
       }
       
-      // Kirim notifikasi ke user yang ditambahkan (jika bot punya akses)
+      // Kirim notifikasi ke user yang ditambahkan
       try {
         global.bot.sendMessage(targetUserId,
           `🎉 Selamat! Anda sekarang adalah Premium User!\n\nAkses fitur premium telah diaktifkan.\n\n🔧 *Bot by RizzXploit • JCN Community*`,
@@ -54,23 +59,25 @@ class UserHandler {
   async addRegularUser(chatId, targetUserId) {
     try {
       // Cek apakah user sudah ada
-      const user = await User.findOne({ user_id: targetUserId });
+      const [existingUsers] = await db.query(
+        'SELECT * FROM users WHERE user_id = ?', 
+        [targetUserId]
+      );
       
-      if (user) {
+      if (existingUsers.length > 0) {
         global.bot.sendMessage(chatId,
-          `ℹ️ User \`${targetUserId}\` sudah terdaftar sebagai ${user.role}.\n\n🔧 *Bot by RizzXploit • JCN Community*`,
+          `ℹ️ User \`${targetUserId}\` sudah terdaftar sebagai ${existingUsers[0].role}.\n\n🔧 *Bot by RizzXploit • JCN Community*`,
           { parse_mode: 'Markdown' }
         );
         return;
       }
       
       // Buat user baru member
-      await User.create({
-        user_id: targetUserId,
-        first_name: 'Member User',
-        role: 'member',
-        invited_by: chatId.toString()
-      });
+      await db.query(
+        `INSERT INTO users (user_id, first_name, role, invited_by) 
+         VALUES (?, ?, ?, ?)`,
+        [targetUserId, 'Member User', 'member', chatId.toString()]
+      );
       
       global.bot.sendMessage(chatId,
         `✅ User member \`${targetUserId}\` berhasil ditambahkan!\n\n🔧 *Bot by RizzXploit • JCN Community*`,
@@ -89,7 +96,9 @@ class UserHandler {
   // List all users
   async listAllUsers(chatId) {
     try {
-      const users = await User.findAll({ is_active: true });
+      const users = await db.query(
+        'SELECT * FROM users WHERE is_active = TRUE ORDER BY role DESC, join_date DESC'
+      );
       
       if (users.length === 0) {
         global.bot.sendMessage(chatId,
@@ -123,10 +132,10 @@ class UserHandler {
   // List premium users only
   async listPremiumUsers(chatId) {
     try {
-      const premiumUsers = await User.findAll({ 
-        role: 'premium', 
-        is_active: true 
-      });
+      const premiumUsers = await db.query(
+        'SELECT * FROM users WHERE role = ? AND is_active = TRUE ORDER BY join_date DESC',
+        ['premium']
+      );
       
       if (premiumUsers.length === 0) {
         global.bot.sendMessage(chatId,
