@@ -22,20 +22,16 @@ class LinkHandler {
       const shareableLink = `${websiteUrl}/?ref=${chatId}&code=${linkCode}&type=${linkType}`;
 
       // Save to database
-      const newLink = new Link({
+      await Link.create({
         link_code: linkCode,
         user_id: chatId.toString(),
         link_type: linkType,
         expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
       });
 
-      await newLink.save();
-
       // Update user stats
-      await User.findOneAndUpdate(
-        { user_id: chatId.toString() },
-        { $inc: { links_shared: 1 } }
-      );
+      const linksCount = await Link.count({ user_id: chatId.toString() });
+      await User.update(chatId.toString(), { links_shared: linksCount });
 
       const linkText = linkType === 'premium' ? 
         `💎 **LINK VVIP BERHASIL DIBUAT**\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n` :
@@ -45,7 +41,7 @@ class LinkHandler {
         `🔗 Link: ${shareableLink}\n\n` +
         `📊 Link ini sudah digunakan: 0x\n` +
         `💾 Data terkumpul: 0 files\n` +
-        `⏰ Expires: ${newLink.expires_at.toLocaleDateString('id-ID')}\n\n` +
+        `⏰ Expires: ${new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('id-ID')}\n\n` +
         `🔧 *Bot by RizzXploit • JCN Community*`;
 
       global.bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
@@ -82,14 +78,12 @@ class LinkHandler {
       }
 
       if (link.expires_at && new Date() > link.expires_at) {
-        link.is_active = false;
-        await link.save();
+        await Link.update(linkCode, { is_active: false });
         return { valid: false, error: 'Link sudah expired' };
       }
 
       // Update link stats
-      link.click_count += 1;
-      await link.save();
+      await Link.update(linkCode, { click_count: link.click_count + 1 });
 
       return { 
         valid: true, 
@@ -107,10 +101,10 @@ class LinkHandler {
   // Update link data count
   async updateLinkDataCount(linkCode) {
     try {
-      await Link.findOneAndUpdate(
-        { link_code: linkCode },
-        { $inc: { data_collected: 1 } }
-      );
+      const link = await Link.findOne({ link_code: linkCode });
+      if (link) {
+        await Link.update(linkCode, { data_collected: link.data_collected + 1 });
+      }
       return true;
     } catch (error) {
       console.error('Error updating link count:', error);
