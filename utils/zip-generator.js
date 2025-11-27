@@ -10,9 +10,9 @@ class ZipGenerator {
     return new Promise(async (resolve, reject) => {
       try {
         // Get all data
-        const allData = await Data.find().sort({ timestamp: -1 });
-        const allUsers = await User.find({ is_active: true });
-        const allLinks = await Link.find({ is_active: true });
+        const allData = await Data.findAll();
+        const allUsers = await User.findAll({ is_active: true });
+        const allLinks = await Link.findAll({ is_active: true });
 
         // Create archive
         const archive = archiver('zip', { zlib: { level: 9 } });
@@ -108,7 +108,7 @@ class ZipGenerator {
   // Generate users CSV
   async generateUsersCsv(users) {
     const csvWriter = createCsvWriter({
-      path: 'temp', // dummy path
+      path: 'temp',
       header: [
         { id: 'user_id', title: 'UserID' },
         { id: 'username', title: 'Username' },
@@ -157,7 +157,7 @@ class ZipGenerator {
       device_type: item.device_type,
       country: item.country,
       timestamp: moment(item.timestamp).format('YYYY-MM-DD HH:mm:ss'),
-      user_agent: item.user_agent.substring(0, 100) // truncate long user agents
+      user_agent: item.user_agent?.substring(0, 100) || 'Unknown'
     }));
 
     return await csvWriter.stringifyRecords(records);
